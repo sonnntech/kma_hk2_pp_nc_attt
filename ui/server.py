@@ -835,11 +835,31 @@ def application(environ: dict[str, Any], start_response: Any):
 
 
 def main() -> None:
+    import sys
     host = "127.0.0.1"
     port = 8000
-    with make_server(host, port, application) as server:
-        print(f"Dashboard running at http://{host}:{port}")
-        server.serve_forever()
+    
+    if len(sys.argv) > 1:
+        try:
+            port = int(sys.argv[1])
+        except ValueError:
+            print(f"Invalid port: {sys.argv[1]}. Using default.")
+
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        try:
+            with make_server(host, port, application) as server:
+                print(f"Dashboard running at http://{host}:{port}")
+                server.serve_forever()
+                break
+        except OSError as e:
+            if e.errno in (48, 98):
+                print(f"Port {port} is busy. Trying next port {port + 1}...")
+                port += 1
+            else:
+                raise e
+    else:
+        print(f"Could not bind to any port after {max_attempts} attempts.")
 
 
 if __name__ == "__main__":
