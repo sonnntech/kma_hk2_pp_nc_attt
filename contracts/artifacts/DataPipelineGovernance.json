@@ -1,0 +1,15 @@
+{
+  "contractName": "DataPipelineGovernance",
+  "abi": [
+    {
+      "name": "storeProof",
+      "type": "function"
+    },
+    {
+      "name": "getProof",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x849fc75f16f2c5ba832a7dd1db1722e94d6f613d57d85ba0d55de145e4d0513d",
+  "sourceHash": "849fc75f16f2c5ba832a7dd1db1722e94d6f613d57d85ba0d55de145e4d0513d"
+}
