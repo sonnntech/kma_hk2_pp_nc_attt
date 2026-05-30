@@ -159,330 +159,631 @@ def dashboard_page(settings: Settings, feedback: ActionFeedback | None = None) -
         )
     audit_label = audit_snapshot.detail if audit_snapshot else "Waiting for pipeline proof"
     audit_class = audit_snapshot.level if audit_snapshot else "neutral"
+
+    # Select appropriate SVG icon for verification status
+    if audit_class == "success":
+        svg_icon = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.748-5.25z" clip-rule="evenodd" />
+        </svg>"""
+    elif audit_class == "danger":
+        svg_icon = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clip-rule="evenodd" />
+        </svg>"""
+    else:
+        svg_icon = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12 7.5a.75.75 0 01.75.75v5.25a.75.75 0 01-1.5 0V8.25A.75.75 0 0112 7.5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+        </svg>"""
+
     body = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Blockchain Smart Contract Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --bg: #f2efe8;
-      --panel: rgba(255,255,255,0.78);
-      --ink: #1f1d1b;
-      --muted: #5f584f;
-      --accent: #bf5b2c;
-      --accent-2: #23443c;
-      --success: #1d6b45;
-      --warning: #9a6700;
-      --danger: #a3312d;
+      --bg: #090d16;
+      --panel: rgba(17, 24, 39, 0.7);
+      --ink: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #06b6d4;
+      --accent-2: #8b5cf6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
       --neutral: #6b7280;
-      --border: rgba(31,29,27,0.10);
-      --shadow: 0 24px 60px rgba(45, 29, 18, 0.12);
-      --radius: 24px;
+      --border: rgba(255, 255, 255, 0.08);
+      --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+      --radius: 16px;
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      font-family: "IBM Plex Sans", "Aptos", "Segoe UI", sans-serif;
+      font-family: 'Outfit', sans-serif;
       color: var(--ink);
-      background:
-        radial-gradient(circle at top left, rgba(191,91,44,0.18), transparent 28%),
-        radial-gradient(circle at bottom right, rgba(35,68,60,0.20), transparent 26%),
-        linear-gradient(135deg, #f7f1e6 0%, #efe7da 52%, #f4f4ef 100%);
+      background: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+        #0b0f19;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 16px;
     }}
     .shell {{
-      width: min(1380px, calc(100% - 32px));
-      margin: 24px auto 40px;
+      width: 100%;
+      max-width: 1200px;
+      margin: 40px auto;
     }}
-    .hero {{
-      display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 18px;
-      align-items: stretch;
-    }}
-    .hero-card, .panel {{
+    .header-panel {{
       background: var(--panel);
-      backdrop-filter: blur(18px);
+      backdrop-filter: blur(16px);
       border: 1px solid var(--border);
       border-radius: var(--radius);
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 32px;
+      align-items: center;
+      margin-bottom: 24px;
       box-shadow: var(--shadow);
     }}
-    .hero-card {{
-      padding: 28px;
-      position: relative;
-      overflow: hidden;
-    }}
-    .hero-card::after {{
-      content: "";
-      position: absolute;
-      inset: auto -40px -40px auto;
-      width: 180px;
-      height: 180px;
-      background: linear-gradient(135deg, rgba(191,91,44,0.25), rgba(35,68,60,0.15));
-      border-radius: 40px;
-      transform: rotate(18deg);
-    }}
-    .eyebrow {{
-      display: inline-block;
-      font-size: 12px;
-      letter-spacing: 0.16em;
+    .badge-tag {{
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--accent-2);
+      color: var(--accent);
+      display: inline-block;
       margin-bottom: 12px;
-      font-weight: 700;
     }}
     h1 {{
-      margin: 0 0 10px;
-      font-family: "Iowan Old Style", "Palatino Linotype", serif;
-      font-size: clamp(2rem, 3.2vw, 3.3rem);
-      line-height: 1.02;
-      max-width: 10ch;
+      margin: 0 0 8px;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }}
-    .hero p {{
+    .brand p {{
       margin: 0;
       color: var(--muted);
-      max-width: 64ch;
-      line-height: 1.6;
-      position: relative;
-      z-index: 1;
+      font-size: 15px;
+      line-height: 1.5;
     }}
-    .badge-grid {{
+    .quick-stats {{
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      padding: 24px;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
     }}
-    .badge {{
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.74);
+    .stat-card {{
+      background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.2s ease;
     }}
-    .badge span {{
+    .stat-card:hover {{
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(6, 182, 212, 0.25);
+    }}
+    .stat-title {{
       display: block;
+      font-size: 11px;
       color: var(--muted);
-      font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      margin-bottom: 8px;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      font-weight: 500;
     }}
-    .badge strong {{
+    .stat-value {{
       display: block;
-      font-size: 1rem;
-      line-height: 1.4;
-      word-break: break-word;
+      font-size: 16px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }}
+    .text-accent {{ color: var(--accent); }}
+    .text-accent2 {{ color: var(--accent-2); }}
     .banner {{
-      margin: 18px 0 0;
-      padding: 14px 18px;
-      border-radius: 18px;
+      margin-bottom: 24px;
+      padding: 16px 20px;
+      border-radius: 12px;
       display: flex;
-      gap: 14px;
+      gap: 12px;
       align-items: center;
-      border: 1px solid transparent;
-      animation: slideUp 220ms ease-out;
+      border-left: 4px solid transparent;
+      animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
     }}
-    .banner strong {{ min-width: 150px; }}
-    .banner.success {{ background: rgba(29,107,69,0.12); color: var(--success); border-color: rgba(29,107,69,0.25); }}
-    .banner.warning {{ background: rgba(154,103,0,0.12); color: var(--warning); border-color: rgba(154,103,0,0.25); }}
-    .banner.danger {{ background: rgba(163,49,45,0.12); color: var(--danger); border-color: rgba(163,49,45,0.25); }}
-    .banner.info {{ background: rgba(35,68,60,0.12); color: var(--accent-2); border-color: rgba(35,68,60,0.22); }}
-    .toolbar {{
-      margin-top: 18px;
+    .banner.success {{ background: rgba(16, 185, 129, 0.1); border-left-color: var(--success); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.2); }}
+    .banner.warning {{ background: rgba(245, 158, 11, 0.1); border-left-color: var(--warning); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.2); }}
+    .banner.danger {{ background: rgba(239, 68, 68, 0.1); border-left-color: var(--danger); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.2); }}
+    .banner.info {{ background: rgba(139, 92, 246, 0.1); border-left-color: var(--accent-2); color: #ddd6fe; border: 1px solid rgba(139, 92, 246, 0.2); }}
+    .toolbar-panel {{
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }}
+    .panel-section-title {{
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }}
+    .toolbar-grid {{
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(6, 1fr);
       gap: 12px;
     }}
     form {{ margin: 0; }}
-    button {{
+    .btn {{
       width: 100%;
-      border: none;
-      border-radius: 16px;
-      padding: 14px 16px;
-      font: inherit;
-      font-weight: 700;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 14px 12px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
-      transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
-      box-shadow: 0 10px 18px rgba(31,29,27,0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }}
-    button:hover {{ transform: translateY(-1px); }}
-    .primary {{ background: linear-gradient(135deg, #c76b34, #bf5b2c); color: white; }}
-    .secondary {{ background: linear-gradient(135deg, #31594f, #23443c); color: white; }}
-    .ghost {{ background: rgba(255,255,255,0.82); color: var(--ink); }}
-    .warn {{ background: linear-gradient(135deg, #b14038, #8f2f2a); color: white; }}
-    .layout {{
-      margin-top: 22px;
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 18px;
+    .btn:hover {{
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
     }}
-    .stack {{
+    .btn:active {{
+      transform: translateY(0);
+    }}
+    .btn-deploy {{
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: white;
+      border-color: #38bdf8;
+    }}
+    .btn-deploy:hover {{
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }}
+    .btn-run {{
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: white;
+      border-color: #a78bfa;
+    }}
+    .btn-run:hover {{
+      box-shadow: 0 0 15px rgba(167, 139, 246, 0.4);
+    }}
+    .btn-proof {{
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--accent);
+      border-color: rgba(6, 182, 212, 0.4);
+    }}
+    .btn-proof:hover {{
+      background: rgba(6, 182, 212, 0.1);
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+    }}
+    .btn-audit {{
+      background: rgba(255, 255, 255, 0.05);
+      color: #10b981;
+      border-color: rgba(16, 185, 129, 0.4);
+    }}
+    .btn-audit:hover {{
+      background: rgba(16, 185, 129, 0.1);
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }}
+    .btn-tamper {{
+      background: linear-gradient(135deg, #b91c1c, #991b1b);
+      color: white;
+      border-color: #ef4444;
+    }}
+    .btn-tamper:hover {{
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    }}
+    .btn-reset {{
+      background: rgba(255, 255, 255, 0.02);
+      color: #9ca3af;
+      border-color: rgba(255, 255, 255, 0.1);
+    }}
+    .btn-reset:hover {{
+      background: rgba(255, 255, 255, 0.08);
+      color: #f3f4f6;
+    }}
+    .main-layout {{
       display: grid;
-      gap: 18px;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 24px;
     }}
     .panel {{
-      padding: 22px;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
     }}
     .panel h2 {{
-      margin: 0 0 8px;
-      font-family: "Iowan Old Style", "Palatino Linotype", serif;
-      font-size: 1.45rem;
+      margin: 0 0 4px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
     }}
-    .panel p {{
-      margin: 0 0 18px;
+    .panel-subtitle {{
+      margin: 0 0 20px;
+      font-size: 14px;
+      color: var(--muted);
+    }}
+    .verdict-card {{
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }}
+    .verdict-card.success {{
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.3);
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.15);
+    }}
+    .verdict-card.success .verdict-icon {{
+      color: var(--success);
+      filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.5));
+    }}
+    .verdict-card.success .verdict-text {{
+      color: #a7f3d0;
+    }}
+    .verdict-card.danger {{
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.3);
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.15);
+      animation: pulseAlert 2s infinite alternate;
+    }}
+    .verdict-card.danger .verdict-icon {{
+      color: var(--danger);
+      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+    }}
+    .verdict-card.danger .verdict-text {{
+      color: #fca5a5;
+    }}
+    .verdict-card.neutral {{
+      background: rgba(255, 255, 255, 0.03);
+      border-color: var(--border);
+    }}
+    .verdict-card.neutral .verdict-icon {{
+      color: #9ca3af;
+    }}
+    .verdict-card.neutral .verdict-text {{
+      color: #e5e7eb;
+    }}
+    .verdict-icon {{
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+    }}
+    .verdict-info {{
+      display: flex;
+      flex-direction: column;
+    }}
+    .verdict-label-tag {{
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }}
+    .verdict-text {{
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.4;
+    }}
+    .status-grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }}
+    .status-item {{
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 14px;
+    }}
+    .status-title {{
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }}
+    .status-value {{
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }}
+    .explorer-panel {{
+      padding: 0;
+      overflow: hidden;
+    }}
+    .explorer-header {{
+      padding: 28px 28px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }}
+    .tab-buttons {{
+      display: flex;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px;
+      border-radius: 10px;
+      width: fit-content;
+    }}
+    .tab-btn {{
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 8px 16px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }}
+    .tab-btn.active {{
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }}
+    .tab-btn:hover:not(.active) {{
+      color: white;
+      background: rgba(255, 255, 255, 0.03);
+    }}
+    .tab-content {{
+      padding: 28px;
+      display: none;
+      flex-direction: column;
+      flex-grow: 1;
+    }}
+    .tab-content.active {{
+      display: flex;
+      animation: fadeIn 0.25s ease-out;
+    }}
+    .tab-description {{
+      margin: 0 0 16px;
+      font-size: 14px;
       color: var(--muted);
       line-height: 1.5;
     }}
-    .status-row {{
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
-    }}
-    .stat {{
-      padding: 14px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.66);
-      border: 1px solid var(--border);
-    }}
-    .stat span {{
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      margin-bottom: 6px;
-    }}
-    .stat strong {{
-      display: block;
-      font-size: 0.96rem;
-      line-height: 1.35;
-      word-break: break-word;
-    }}
-    .pill {{
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-weight: 700;
-      font-size: 0.92rem;
-    }}
-    .pill.success {{ background: rgba(29,107,69,0.13); color: var(--success); }}
-    .pill.danger {{ background: rgba(163,49,45,0.12); color: var(--danger); }}
-    .pill.neutral {{ background: rgba(107,114,128,0.12); color: var(--neutral); }}
     pre {{
       margin: 0;
       overflow: auto;
       padding: 16px;
-      border-radius: 18px;
-      background: #171614;
-      color: #f6f1e8;
-      font-family: "Berkeley Mono", "Fira Code", monospace;
-      font-size: 13px;
-      line-height: 1.55;
+      border-radius: 12px;
+      background: #020617;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: #93c5fd;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      max-height: 380px;
       min-height: 140px;
     }}
     .empty {{
       padding: 24px;
-      border-radius: 18px;
+      border-radius: 12px;
       border: 1px dashed var(--border);
       color: var(--muted);
-      background: rgba(255,255,255,0.46);
-    }}
-    .footer {{
-      margin-top: 18px;
-      color: var(--muted);
-      font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.01);
+      font-size: 14px;
       text-align: center;
     }}
-    @keyframes slideUp {{
-      from {{ opacity: 0; transform: translateY(6px); }}
+    .footer {{
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }}
+    .footer code {{
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+    }}
+    @keyframes fadeIn {{
+      from {{ opacity: 0; transform: translateY(4px); }}
       to {{ opacity: 1; transform: translateY(0); }}
     }}
+    @keyframes slideDown {{
+      from {{ opacity: 0; transform: translateY(-10px); }}
+      to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    @keyframes pulseAlert {{
+      from {{ box-shadow: 0 0 15px rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }}
+      to {{ box-shadow: 0 0 30px rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.4); }}
+    }}
     @media (max-width: 980px) {{
-      .hero, .layout {{ grid-template-columns: 1fr; }}
-      .toolbar {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
-      .status-row {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+      .header-panel {{ grid-template-columns: 1fr; }}
+      .toolbar-grid {{ grid-template-columns: repeat(3, 1fr); }}
+      .main-layout {{ grid-template-columns: 1fr; }}
     }}
     @media (max-width: 640px) {{
-      .shell {{ width: min(100% - 20px, 1380px); margin-top: 10px; }}
-      .hero-card, .panel {{ border-radius: 20px; }}
-      .hero-card {{ padding: 22px; }}
-      .badge-grid, .panel {{ padding: 18px; }}
-      .toolbar, .status-row {{ grid-template-columns: 1fr; }}
+      .toolbar-grid {{ grid-template-columns: repeat(2, 1fr); }}
+      .status-grid {{ grid-template-columns: 1fr; }}
     }}
   </style>
 </head>
 <body>
   <main class="shell">
-    <section class="hero">
-      <article class="hero-card">
-        <span class="eyebrow">Blockchain Integrity Demo</span>
+    <header class="header-panel">
+      <div class="brand">
+        <span class="badge-tag">Blockchain Integrity System</span>
         <h1>Smart Contract Control Room</h1>
-        <p>Visual dashboard for the mock Solidity deployment, proof submission, mined transactions, warehouse state, and audit verdict. Use the controls below to drive the demo instead of relying only on terminal commands.</p>
-      </article>
-      <aside class="hero-card badge-grid">
-        <div class="badge"><span>Contract Address</span><strong>{html.escape(contract_address)}</strong></div>
-        <div class="badge"><span>Warehouse Records</span><strong>{record_count}</strong></div>
-        <div class="badge"><span>Stored Proof</span><strong>{html.escape(proof['dataset_hash'][:20] + '...' if proof else 'No proof yet')}</strong></div>
-        <div class="badge"><span>Latest Block</span><strong>{html.escape(str(latest_block['block_number']) if latest_block else 'No block mined')}</strong></div>
-      </aside>
-    </section>
+        <p>A secure ETL data pipeline with on-chain cryptographic proofs and independent auditing.</p>
+      </div>
+      <div class="quick-stats">
+        <div class="stat-card">
+          <span class="stat-title">Smart Contract</span>
+          <strong class="stat-value text-accent" title="{html.escape(contract_address)}">{html.escape(contract_address if len(contract_address) < 22 else contract_address[:18] + '...')}</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Warehouse Size</span>
+          <strong class="stat-value">{record_count} Records</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Stored Proof</span>
+          <strong class="stat-value text-accent2">{html.escape(proof['dataset_hash'][:14] + '...' if proof else 'No Proof')}</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Ledger Height</span>
+          <strong class="stat-value">Block #{html.escape(str(latest_block['block_number']) if latest_block else '0')}</strong>
+        </div>
+      </div>
+    </header>
+
     {banner}
-    <section class="toolbar">
-      <form method="post" action="/action"><input type="hidden" name="action" value="deploy"><button class="primary">Deploy Contract</button></form>
-      <form method="post" action="/action"><input type="hidden" name="action" value="run_pipeline"><button class="secondary">Run Pipeline</button></form>
-      <form method="post" action="/action"><input type="hidden" name="action" value="store_proof"><button class="ghost">Store Current Proof</button></form>
-      <form method="post" action="/action"><input type="hidden" name="action" value="audit"><button class="ghost">Run Audit</button></form>
-      <form method="post" action="/action"><input type="hidden" name="action" value="tamper"><button class="warn">Simulate Tamper</button></form>
-      <form method="post" action="/action"><input type="hidden" name="action" value="reset"><button class="ghost">Reset Demo State</button></form>
+
+    <section class="toolbar-panel">
+      <span class="panel-section-title">CONTROL OPERATIONS</span>
+      <div class="toolbar-grid">
+        <form method="post" action="/action"><input type="hidden" name="action" value="deploy"><button class="btn btn-deploy">Deploy Contract</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="run_pipeline"><button class="btn btn-run">Run Pipeline</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="store_proof"><button class="btn btn-proof">Store Proof</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="audit"><button class="btn btn-audit">Verify Audit</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="tamper"><button class="btn btn-tamper">Simulate Tamper</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="reset"><button class="btn btn-reset">Reset Demo</button></form>
+      </div>
     </section>
-    <section class="layout">
-      <div class="stack">
-        <section class="panel">
-          <h2>Verification Snapshot</h2>
-          <p>Fast summary of the blockchain-linked warehouse state.</p>
-          <div class="status-row">
-            <div class="stat"><span>Web3 Connectivity</span><strong>{'Connected' if settings.ledger_path.exists() else 'Not initialized'}</strong></div>
-            <div class="stat"><span>Artifact</span><strong>{'Ready' if artifact else 'Missing'}</strong></div>
-            <div class="stat"><span>Proof Entries</span><strong>{len(proofs)}</strong></div>
-            <div class="stat"><span>Blocks</span><strong>{len(ledger.get('blocks', [])) if isinstance(ledger, dict) else 0}</strong></div>
+
+    <section class="main-layout">
+      <!-- Left Column: Audit Verdict & Network Status -->
+      <div class="column-left">
+        <div class="panel verdict-panel {audit_class}">
+          <h2>Verification Verdict</h2>
+          <p class="panel-subtitle">On-chain integrity verification status</p>
+          
+          <div class="verdict-card {audit_class}">
+            <div class="verdict-icon">
+              {svg_icon}
+            </div>
+            <div class="verdict-info">
+              <span class="verdict-label-tag">AUDIT MESSAGE</span>
+              <strong class="verdict-text">{html.escape(audit_label)}</strong>
+            </div>
           </div>
-          <div class="pill {audit_class}">{html.escape(audit_label)}</div>
-        </section>
-        <section class="panel">
-          <h2>Warehouse Payload</h2>
-          <p>Transformed dataset persisted by the ETL pipeline.</p>
-          {render_json_block(warehouse, "Warehouse file not created yet. Run the pipeline to generate records.")}
-        </section>
-        <section class="panel">
-          <h2>Deterministic Ledger</h2>
-          <p>Most recent mined transaction and block hash.</p>
-          {render_json_block(latest_block, "No mined block yet. Store a proof to populate the ledger.")}
-        </section>
+
+          <div class="status-grid">
+            <div class="status-item">
+              <span class="status-title">Ledger State</span>
+              <strong class="status-value">{'Connected & Healthy' if settings.ledger_path.exists() else 'Not initialized'}</strong>
+            </div>
+            <div class="status-item">
+              <span class="status-title">Solidity Compilation</span>
+              <strong class="status-value">{'Compiled & Ready' if artifact else 'Missing'}</strong>
+            </div>
+            <div class="status-item">
+              <span class="status-title">Registered Proofs</span>
+              <strong class="status-value">{len(proofs)} active proof(s)</strong>
+            </div>
+            <div class="status-item">
+              <span class="status-title">Mined Blocks</span>
+              <strong class="status-value">{len(ledger.get('blocks', [])) if isinstance(ledger, dict) else 0} blocks</strong>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="stack">
-        <section class="panel">
-          <h2>Contract Deployment</h2>
-          <p>Deployment metadata and compiled Solidity artifact.</p>
-          {render_json_block(deployment, "Contract not deployed yet.")}
-        </section>
-        <section class="panel">
-          <h2>Contract Proof State</h2>
-          <p>Current dataset and manifest hashes stored by the contract service.</p>
-          {render_json_block(contract_state, "No contract state yet.")}
-        </section>
-        <section class="panel">
-          <h2>Contract Artifact</h2>
-          <p>Generated ABI, bytecode fingerprint, and source hash.</p>
-          {render_json_block(artifact, "Artifact not built yet.")}
-        </section>
+
+      <!-- Right Column: Data Explorer with Modern Tabs -->
+      <div class="column-right">
+        <div class="panel explorer-panel">
+          <div class="explorer-header">
+            <h2>Data Explorer</h2>
+            <div class="tab-buttons">
+              <button class="tab-btn active" onclick="switchTab('tab-warehouse')">Warehouse</button>
+              <button class="tab-btn" onclick="switchTab('tab-ledger')">Ledger & Proofs</button>
+              <button class="tab-btn" onclick="switchTab('tab-contract')">Smart Contract</button>
+            </div>
+          </div>
+
+          <!-- Tab Content: Warehouse Payload -->
+          <div id="tab-warehouse" class="tab-content active">
+            <p class="tab-description">The local structured database representing data generated and sanitized by ETL pipeline.</p>
+            {render_json_block(warehouse, "Warehouse payload not created yet. Run the pipeline to write files.")}
+          </div>
+
+          <!-- Tab Content: Ledger & Proofs -->
+          <div id="tab-ledger" class="tab-content">
+            <p class="tab-description">The latest block state mined on the local immutable ledger, alongside registered proofs.</p>
+            <div class="ledger-subgrid">
+              <div class="subblock">
+                <h3>Latest Mined Block</h3>
+                {render_json_block(latest_block, "No blocks mined yet. Submit a proof to trigger mining.")}
+              </div>
+              <div class="subblock" style="margin-top: 16px;">
+                <h3>Active Proof State (On-chain)</h3>
+                {render_json_block(contract_state, "No on-chain contract state generated yet.")}
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab Content: Smart Contract Info -->
+          <div id="tab-contract" class="tab-content">
+            <p class="tab-description">Metadata of the deployed Smart Contract, bytecode fingerprint, and full compilation details.</p>
+            <div class="ledger-subgrid">
+              <div class="subblock">
+                <h3>Solidity Deployment Artifact</h3>
+                {render_json_block(deployment, "Contract not deployed yet.")}
+              </div>
+              <div class="subblock" style="margin-top: 16px;">
+                <h3>ABI & Bytecode Specs</h3>
+                {render_json_block(artifact, "Solidity compilation artifact missing. Build or deploy to compile.")}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
+
     <div class="footer">Start the dashboard with <code>python3 ui/server.py</code> then open <code>http://127.0.0.1:8000</code>.</div>
   </main>
+
+  <script>
+    function switchTab(tabId) {{
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }}
+  </script>
 </body>
 </html>"""
     return body.encode("utf-8")
