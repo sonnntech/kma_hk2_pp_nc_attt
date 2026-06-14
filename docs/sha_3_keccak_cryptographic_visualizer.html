@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHA-3 (Keccak) Sponge Construction & Permutation Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            950: '#030712',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Header & Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        SHA-3 (Keccak) Visual Lab
+                        <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">FIPS 202</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Học viện Mô phỏng Mật mã học trực quan dành cho Chuyên gia An ninh mạng</p>
+                </div>
+            </div>
+            
+            <nav class="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <button onclick="switchTab('simulator')" id="btn-simulator" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-emerald-500 text-slate-950 shadow">
+                    Mô Phỏng Tương Tác
+                </button>
+                <button onclick="switchTab('matrix')" id="btn-matrix" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200">
+                    Khám Phá State Matrix
+                </button>
+                <button onclick="switchTab('comparison')" id="btn-comparison" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200">
+                    SHA-2 vs SHA-3
+                </button>
+                <button onclick="switchTab('academic')" id="btn-academic" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200">
+                    Tài Liệu Chuyên Sâu
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 gap-6">
+        
+        <!-- ================= TAB 1: INTERACTIVE SIMULATOR ================= -->
+        <section id="tab-simulator" class="tab-content grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left Panel: Input & Controls -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                <!-- Data Input Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Dữ liệu đầu vào (Input)
+                    </h3>
+                    <div class="flex flex-col gap-3">
+                        <textarea id="input-text" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/50 resize-none transition-all" placeholder="Nhập chuỗi văn bản cần hash...">hello</textarea>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-950 p-2 rounded border border-slate-800/60">
+                                <span class="text-slate-500 block">Kích thước (Bytes):</span>
+                                <span id="input-bytes-len" class="font-bold text-slate-300">5</span>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-800/60">
+                                <span class="text-slate-500 block">Số khối (Blocks):</span>
+                                <span id="input-blocks-count" class="font-bold text-slate-300">1</span>
+                            </div>
+                        </div>
+
+                        <button onclick="runHashingSimulation()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            Tính Toán / Cập Nhật Mô Phỏng
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulation Stepper -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex-grow flex flex-col">
+                    <h3 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        <span>Quy Trình Sponge & Permutation</span>
+                        <span id="sim-status" class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30 uppercase">Sẵn sàng</span>
+                    </h3>
+
+                    <!-- Interactive Playback Controls -->
+                    <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800/80 mb-4">
+                        <button onclick="stepPrev()" class="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-all" title="Bước trước">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                        <div class="text-xs text-slate-300 font-mono">
+                            Khối <span id="current-block-display" class="font-bold text-emerald-400">1</span>/<span id="total-blocks-display">1</span> | Vòng <span id="current-round-display" class="font-bold text-indigo-400">0</span>
+                        </div>
+                        <button onclick="stepNext()" class="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-all" title="Bước tiếp">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                    </div>
+
+                    <!-- Steps Timeline -->
+                    <div class="flex flex-col gap-4 flex-grow text-xs justify-between">
+                        <!-- Step 1: Padding -->
+                        <div id="step-card-padding" class="p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:border-slate-700 transition-all" onclick="jumpToStep('padding')">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 1. Padding (SHA-3 10*1)
+                                </span>
+                                <span class="text-[10px] text-slate-500 font-mono" id="padding-summary">1088 bits block</span>
+                            </div>
+                            <p class="text-slate-400 text-[11px]">Thêm suffix domain separation `01` và padding `10*1` để lấp đầy kích thước bitrate $r = 1088$ bits.</p>
+                        </div>
+
+                        <!-- Step 2: Absorbing -->
+                        <div id="step-card-absorbing" class="p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:border-slate-700 transition-all" onclick="jumpToStep('absorbing')">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> 2. Absorbing Phase
+                                </span>
+                                <span class="text-[10px] text-slate-500 font-mono">XOR into Bitrate</span>
+                            </div>
+                            <p class="text-slate-400 text-[11px]">Trộn khối tin nhắn $r$ bits vào phân vùng Bitrate của State Matrix bằng phép toán XOR.</p>
+                        </div>
+
+                        <!-- Step 3: Permutations -->
+                        <div id="step-card-permutation" class="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/10 cursor-pointer hover:border-emerald-500/50 transition-all" onclick="jumpToStep('permutation')">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> 3. Keccak-f [1600] Permutations
+                                </span>
+                                <span class="text-[10px] text-indigo-400 font-semibold font-mono">24 Rounds</span>
+                            </div>
+                            <p class="text-slate-300 text-[11px]">Thực thi 24 vòng lặp xáo trộn. Chọn bước vi mô hiện tại:</p>
+                            
+                            <!-- Micro Steps Selector -->
+                            <div class="grid grid-cols-5 gap-1 mt-2 text-[10px] text-center font-mono">
+                                <button onclick="setMicroStep('theta', event)" id="mstep-theta" class="py-1 bg-indigo-950 border border-indigo-800 rounded text-indigo-300 font-bold hover:bg-indigo-900 transition-all">Theta (θ)</button>
+                                <button onclick="setMicroStep('rho', event)" id="mstep-rho" class="py-1 bg-slate-950 border border-slate-800 rounded text-slate-400 hover:bg-slate-900 transition-all">Rho (ρ)</button>
+                                <button onclick="setMicroStep('pi', event)" id="mstep-pi" class="py-1 bg-slate-950 border border-slate-800 rounded text-slate-400 hover:bg-slate-900 transition-all">Pi (π)</button>
+                                <button onclick="setMicroStep('chi', event)" id="mstep-chi" class="py-1 bg-slate-950 border border-slate-800 rounded text-slate-400 hover:bg-slate-900 transition-all">Chi (χ)</button>
+                                <button onclick="setMicroStep('iota', event)" id="mstep-iota" class="py-1 bg-slate-950 border border-slate-800 rounded text-slate-400 hover:bg-slate-900 transition-all">Iota (ι)</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Squeezing -->
+                        <div id="step-card-squeezing" class="p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:border-slate-700 transition-all" onclick="jumpToStep('squeezing')">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-purple-500"></span> 4. Squeezing Phase
+                                </span>
+                                <span class="text-[10px] text-slate-500 font-mono">Output Extract</span>
+                            </div>
+                            <p class="text-slate-400 text-[11px]">Rút trích các khối $r$ bits đầu tiên từ State Matrix để làm đầu ra băm (Hash Digest).</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Visual State Matrix Canvas -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <!-- State Matrix Visualizer Grid -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                Ma trận Trạng thái Keccak State $5 \times 5$ Lanes (64-bit/lane)
+                            </h3>
+                            <p class="text-xs text-slate-400">Trực quan hóa sự biến đổi giá trị của 25 phần tử (0-24) trong ma trận Keccak-f [1600]</p>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs font-mono">
+                            <span class="flex items-center gap-1.5 text-cyan-400">
+                                <span class="w-3 h-3 bg-cyan-950 border border-cyan-500 rounded"></span> Bitrate $r$ (0-16)
+                            </span>
+                            <span class="flex items-center gap-1.5 text-fuchsia-400">
+                                <span class="w-3 h-3 bg-fuchsia-950 border border-fuchsia-500 rounded"></span> Capacity $c$ (17-24)
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 5x5 Grid Layout -->
+                    <div class="grid grid-cols-5 gap-3 max-w-xl mx-auto w-full aspect-square my-4">
+                        <!-- We will generate the 25 matrix items dynamically -->
+                        <div id="state-grid-container" class="contents">
+                            <!-- JS will inject cards here -->
+                        </div>
+                    </div>
+
+                    <!-- Selected Lane Detail Board -->
+                    <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 text-xs mt-4">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-2 mb-2">
+                            <span class="font-bold text-slate-200">Chi tiết Lane đang chọn: <span id="selected-lane-coord" class="text-emerald-400">Lane A[0,0]</span></span>
+                            <span class="text-slate-500">Dạng nhị phân 64-bit</span>
+                        </div>
+                        <div id="selected-lane-binary" class="code-font grid grid-cols-8 gap-1 text-center bg-slate-900 p-2.5 rounded border border-slate-800/50 text-[11px] text-indigo-300">
+                            <!-- 64 bit segments will show here -->
+                            00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+                        </div>
+                        <div class="mt-2 flex justify-between text-[11px] text-slate-400">
+                            <div>Phân vùng: <span id="selected-lane-segment" class="font-semibold text-cyan-400">Bitrate</span></div>
+                            <div>Hex: <span id="selected-lane-hex" class="code-font text-white font-bold">0x0000000000000000</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Explanation & Mathematical Context -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 id="explain-title" class="text-sm font-bold text-slate-200 uppercase tracking-wider mb-2">
+                        Phân tích giải thuật bước: Theta (θ)
+                    </h3>
+                    <div id="explain-content" class="text-xs text-slate-300 space-y-2">
+                        <!-- Dynamic explanation -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 2: STATE MATRIX EXPLORER ================= -->
+        <section id="tab-matrix" class="tab-content hidden grid grid-cols-1 md:grid-cols-12 gap-6">
+            <!-- Left Guide -->
+            <div class="md:col-span-4 flex flex-col gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 class="text-sm font-bold text-white mb-3">Khái niệm Tọa độ trong Keccak-f</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed mb-3">
+                        Không giống như SHA-2 xử lý mảng tuyến tính các thanh ghi, SHA-3 tổ chức ma trận dữ liệu 3 chiều kích thước $5 \times 5 \times w$ (trong đó $w=64$ đối với Keccak-1600):
+                    </p>
+                    <ul class="space-y-3 text-xs text-slate-400">
+                        <li class="flex gap-2">
+                            <strong class="text-white min-w-[50px]">State:</strong> Toàn bộ 1600 bit chứa trong ma trận $5 \times 5 \times 64$.
+                        </li>
+                        <li class="flex gap-2">
+                            <strong class="text-white min-w-[50px]">Lane:</strong> Một cột dọc theo trục $z$ có độ dài 64 bit tại tọa độ $(x,y)$. Đây là đơn vị cơ bản trong lập trình (kiểu `uint64_t`).
+                        </li>
+                        <li class="flex gap-2">
+                            <strong class="text-white min-w-[50px]">Slice:</strong> Mặt cắt ngang ma trận tại một vị trí trục $z$ bất kỳ, kích thước $5 \times 5 = 25$ bits.
+                        </li>
+                        <li class="flex gap-2">
+                            <strong class="text-white min-w-[50px]">Row:</strong> Tập hợp 5 bits song song với trục $x$ (giao điểm của $y$ và $z$ cố định).
+                        </li>
+                        <li class="flex gap-2">
+                            <strong class="text-white min-w-[50px]">Column:</strong> Tập hợp 5 bits song song với trục $y$ (giao điểm của $x$ và $z$ cố định).
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 class="text-sm font-bold text-white mb-2">Đặc tính Đối xứng</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Cấu trúc này giúp Keccak đạt tốc độ xử lý phần cứng tối đa. Tất cả các cột, hàng trong ma trận có thể được tính toán song song, tối ưu hóa các linh kiện phần cứng ASIC/FPGA gấp nhiều lần so với cơ chế băm chuỗi tuần tự của SHA-2.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Interactive Slice Visualizer -->
+            <div class="md:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg flex flex-col">
+                <h3 class="text-base font-bold text-white mb-2">Mô hình Hoạt động Phép toán vi mô</h3>
+                <p class="text-xs text-slate-400 mb-6">Chọn lát cắt (Slice) và quan sát cách thức tương tác hình học giữa các Lane trong các phép toán vi mô của một vòng băm.</p>
+                
+                <!-- Graphic Slice Matrix with Interactive elements -->
+                <div class="flex-grow flex flex-col justify-center items-center gap-8 py-6">
+                    <div class="relative w-full max-w-lg aspect-video border border-slate-800 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-4">
+                        <!-- Representation of 3D State Matrix -->
+                        <div class="grid grid-cols-5 gap-2 w-48 relative transform rotate-x-12 rotate-y-12">
+                            <!-- Interactive 3D Lane Towers -->
+                            <div class="h-16 bg-emerald-500/30 border border-emerald-500 rounded shadow-md flex items-center justify-center text-[10px] text-emerald-400 font-bold">Lane 0</div>
+                            <div class="h-16 bg-emerald-500/10 border border-emerald-500/20 rounded shadow-md flex items-center justify-center text-[10px] text-slate-500">Lane 1</div>
+                            <div class="h-16 bg-emerald-500/10 border border-emerald-500/20 rounded shadow-md flex items-center justify-center text-[10px] text-slate-500">Lane 2</div>
+                            <div class="h-16 bg-emerald-500/10 border border-emerald-500/20 rounded shadow-md flex items-center justify-center text-[10px] text-slate-500">Lane 3</div>
+                            <div class="h-16 bg-emerald-500/10 border border-emerald-500/20 rounded shadow-md flex items-center justify-center text-[10px] text-slate-500">Lane 4</div>
+                            
+                            <!-- Dummy row 2 -->
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+
+                            <div class="h-16 bg-indigo-500/30 border border-indigo-500 rounded shadow-md flex items-center justify-center text-[10px] text-indigo-400 font-bold">Capacity</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                            <div class="h-16 bg-slate-800/40 border border-slate-800 rounded shadow-md flex items-center justify-center text-[10px] text-slate-600">...</div>
+                        </div>
+
+                        <!-- Info tag overlay -->
+                        <div class="absolute top-4 left-4 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-[11px] text-slate-300">
+                            <span class="font-bold text-white">Lớp cắt (Slices) 3D</span><br>
+                            Mỗi ô dọc gồm 64 bit độ sâu (z-axis)
+                        </div>
+                    </div>
+
+                    <!-- Explanatory Details -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs w-full">
+                        <div class="bg-slate-950 p-4 border border-slate-800/80 rounded-xl">
+                            <h4 class="font-bold text-white mb-1">Khuếch tán (Diffusion)</h4>
+                            <p class="text-slate-400 leading-relaxed text-[11px]">Thực hiện bởi phép toán <strong class="text-indigo-400">Theta (θ)</strong>. Mối quan hệ tương quan của các bit được tính toán trên toàn bộ các cột lân cận để xáo trộn dữ liệu đồng đều.</p>
+                        </div>
+                        <div class="bg-slate-950 p-4 border border-slate-800/80 rounded-xl">
+                            <h4 class="font-bold text-white mb-1">Xáo trộn (Confusion)</h4>
+                            <p class="text-slate-400 leading-relaxed text-[11px]">Thực hiện bởi phép toán <strong class="text-indigo-400">Chi (χ)</strong>. Đây là phép toán phi tuyến tính duy nhất trong SHA-3 (tương đương với các S-box trong AES), ngăn chặn các đòn tấn công giải mã đại số.</p>
+                        </div>
+                        <div class="bg-slate-950 p-4 border border-slate-800/80 rounded-xl">
+                            <h4 class="font-bold text-white mb-1">Xóa bỏ Đối xứng</h4>
+                            <p class="text-slate-400 leading-relaxed text-[11px]">Thực hiện bởi phép toán <strong class="text-indigo-400">Iota (ι)</strong>. Bằng cách cộng một hằng số vòng (Round Constant) vào Lane đầu tiên (0,0), tránh được các mẫu đối xứng lặp đi lặp lại.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 3: SHA-2 vs SHA-3 COMPARISON ================= -->
+        <section id="tab-comparison" class="tab-content hidden flex flex-col gap-6">
+            <!-- Summary Header -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">
+                <h3 class="text-base font-bold text-white mb-2">Đối chiếu Toàn diện: Merkle-Damgård vs. Sponge Construction</h3>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Sự khác biệt cốt lõi giữa hai thế hệ hàm băm nằm ở triết lý kiến trúc. Trong khi <strong class="text-indigo-300">SHA-2</strong> kế thừa kiến trúc Merkle-Damgård cổ điển, <strong class="text-emerald-300">SHA-3</strong> áp dụng cấu trúc Sponge (Bọt biển) đột phá giúp loại bỏ triệt để một trong những điểm yếu lớn nhất của các hàm băm cũ: lỗi thiết kế dẫn tới tấn công mở rộng độ dài (Length Extension Attacks).
+                </p>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950 border-b border-slate-800 text-slate-300">
+                                <th class="p-4 font-bold">Đặc tính kỹ thuật</th>
+                                <th class="p-4 font-bold text-indigo-400">SHA-256 (SHA-2 Family)</th>
+                                <th class="p-4 font-bold text-emerald-400">SHA3-256 (SHA-3 Family)</th>
+                                <th class="p-4 font-bold text-slate-400">Ý nghĩa an toàn & Hệ thống</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Design Structure -->
+                            <tr>
+                                <td class="p-4 font-bold text-white bg-slate-950/20">Kiến trúc thiết kế</td>
+                                <td class="p-4">Merkle-Damgård Construction</td>
+                                <td class="p-4">Sponge (Bọt biển) Construction</td>
+                                <td class="p-4 text-slate-400">SHA-3 không dùng hàm nén (compression function) cổ điển, mà dùng hàm hoán vị $f$ không tổn hao thông tin.</td>
+                            </tr>
+                            <!-- Length Extension Attack -->
+                            <tr>
+                                <td class="p-4 font-bold text-white bg-slate-950/20">Tấn công Mở rộng độ dài (Length Extension)</td>
+                                <td class="p-4 text-rose-400 font-semibold flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    Bị ảnh hưởng (Vulnerable)
+                                </td>
+                                <td class="p-4 text-emerald-400 font-semibold flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                    Miễn nhiễm (Immune)
+                                </td>
+                                <td class="p-4 text-slate-400">SHA-3 giữ bí mật phân vùng Capacity $c$ và chỉ xuất ra một phần $r$. Kẻ tấn công không thể phục dựng trạng thái bộ nhớ để nối dài văn bản một cách hợp lệ.</td>
+                            </tr>
+                            <!-- State Size -->
+                            <tr>
+                                <td class="p-4 font-bold text-white bg-slate-950/20">Kích thước Bộ nhớ trạng thái (State Size)</td>
+                                <td class="p-4">256 bits</td>
+                                <td class="p-4">1600 bits</td>
+                                <td class="p-4 text-slate-400">Trạng thái nội bộ của SHA-3 lớn hơn rất nhiều so với kích thước băm đầu ra, tăng độ phức tạp cho các dạng phân tích mã độc học toán học.</td>
+                            </tr>
+                            <!-- HardWare/Software Performance -->
+                            <tr>
+                                <td class="p-4 font-bold text-white bg-slate-950/20">Hiệu năng Phần mềm (Software)</td>
+                                <td class="p-4 text-emerald-400">Nhanh hơn đáng kể</td>
+                                <td class="p-4 text-amber-400">Chậm hơn ~20-30%</td>
+                                <td class="p-4 text-slate-400">Trong môi trường CPU phổ thông, SHA-2 xử lý nhanh hơn do cấu trúc tập lệnh tối ưu toán học học số học tốt hơn.</td>
+                            </tr>
+                            <!-- HardWare Performance -->
+                            <tr>
+                                <td class="p-4 font-bold text-white bg-slate-950/20">Hiệu năng Phần cứng (FPGA / ASIC)</td>
+                                <td class="p-4 text-amber-400">Bình thường (tuần tự)</td>
+                                <td class="p-4 text-emerald-400">Cực nhanh (song song hóa)</td>
+                                <td class="p-4 text-slate-400">SHA-3 đạt băng thông tối đa trên phần cứng chuyên dụng nhờ thiết kế chỉ bao gồm các phép toán logic cơ bản (XOR, AND, NOT, Shifting).</td>
+                            </tr>
+                            <!-- Math Primitives -->
+                            <tr>
+                                <td class="p-4 font-bold text-white bg-slate-950/20">Nguyên lý toán học cơ sở</td>
+                                <td class="p-4">Phép cộng số học học (Modulo arithmetic Addition)</td>
+                                <td class="p-4">Phép toán logic nhị phân thuần túy (Bitwise Boolean logic)</td>
+                                <td class="p-4 text-slate-400">Không có các phép cộng mang tính lan truyền số nhớ (carry-propagation), giúp giảm diện tích vật lý và điện năng tiêu thụ của chíp xử lý phần cứng.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Visual Flowchart Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h4 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3">Sơ đồ Merkle-Damgård (SHA-256)</h4>
+                    <div class="bg-slate-950 border border-slate-800/80 rounded-lg p-4 font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">
+[Input Block M1] ──> [ Compression (f) ] ──> Internal State (H1)
+                           │
+[Input Block M2] ──> [ Compression (f) ] ──> Internal State (H2) ──> [ Final Hash Output ]
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                        <strong class="text-rose-400">Lỗ hổng:</strong> Trạng thái nội bộ cuối cùng chính là Hash Output được công khai. Bất kỳ ai cũng có thể bắt lấy Output này, nạp ngược vào thanh ghi trạng thái, và tiếp tục xối nén khối dữ liệu tùy ý tiếp theo ($M3$), cấu thành chữ ký băm giả mạo hợp lệ mà không cần biết dữ liệu gốc ban đầu.
+                    </p>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h4 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-3">Sơ đồ Sponge (SHA-3)</h4>
+                    <div class="bg-slate-950 border border-slate-800/80 rounded-lg p-4 font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">
+   ◀───────── Bitrate (r) ─────────▶ ◀───── Capacity (c) ─────▶
+┌─────────────────────────────────┬───────────────────────────┐
+│       State Lane 0..16          │     State Lane 17..24     │
+└────────────────┬────────────────┴─────────────┬─────────────┘
+                 │ (XOR Input Block)            │ (Giữ bí mật)
+                 ▼                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Permutation Function f [1600]               │
+└────────────────┬────────────────────────────────────────────┘
+                 ▼ (Squeezing Output)
+[ Hash Output (First r bits) ]
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                        <strong class="text-emerald-400">Khắc phục:</strong> Cấu trúc Sponge ẩn giấu $c$ bit (Capacity) hoàn toàn khỏi đầu ra băm của hệ thống. Kẻ tấn công không thể suy đoán ngược lại thông tin của phân vùng Capacity này, do đó không thể khởi tạo hay nạp trạng thái nội bộ để thực hiện tấn công mở rộng độ dài.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 4: ACADEMIC & GOVERNANCE DOCUMENT ================= -->
+        <section id="tab-academic" class="tab-content hidden grid grid-cols-1 md:grid-cols-12 gap-6">
+            <!-- Left Sidebar Navigation for Academic Section -->
+            <div class="md:col-span-3 flex flex-col gap-2">
+                <button onclick="scrollToSection('academic-governance')" class="text-left px-4 py-2 bg-slate-900 hover:bg-slate-800 border-l-2 border-emerald-500 rounded text-xs font-semibold text-slate-200 transition-all">
+                    I. Ứng dụng trong Data Governance
+                </button>
+                <button onclick="scrollToSection('academic-threat-model')" class="text-left px-4 py-2 bg-slate-900 hover:bg-slate-800 border-l-2 border-transparent hover:border-slate-600 rounded text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all">
+                    II. Mô hình Đe dọa Mật mã học
+                </button>
+                <button onclick="scrollToSection('academic-cloud-container')" class="text-left px-4 py-2 bg-slate-900 hover:bg-slate-800 border-l-2 border-transparent hover:border-slate-600 rounded text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all">
+                    III. Hiệu năng & Bảo mật Cloud-native
+                </button>
+                <button onclick="scrollToSection('academic-research-topics')" class="text-left px-4 py-2 bg-slate-900 hover:bg-slate-800 border-l-2 border-transparent hover:border-slate-600 rounded text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all">
+                    IV. Hướng Nghiên cứu Khoa học mở rộng
+                </button>
+            </div>
+
+            <!-- Main Academic Document -->
+            <div class="md:col-span-9 bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8 shadow-lg max-h-[80vh] overflow-y-auto space-y-8 text-xs leading-relaxed text-slate-300">
+                
+                <!-- Section I -->
+                <div id="academic-governance" class="space-y-3">
+                    <h2 class="text-base font-bold text-white border-b border-slate-800 pb-2">I. ỨNG DỤNG CỦA CÁC GIẢI THUẬT HASH TRONG DATA GOVERNANCE & METADATA MANAGEMENT</h2>
+                    <p>
+                        Trong các hệ thống quản trị dữ liệu lớn cấp doanh nghiệp (Enterprise Data Platform), đặc biệt là dựa trên nền tảng DataHub OSS hay các giải pháp Data Catalog chuẩn DAMA DMBoK, hàm băm là cột xương sống để giải quyết các bài toán về toàn vẹn dữ liệu, truy vết nguồn gốc (Data Lineage) và phân loại dữ liệu (Data Classification):
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 pl-2 text-slate-400">
+                        <li>
+                            <strong class="text-white">Metadata Fingerprinting (Định danh Siêu dữ liệu):</strong> Áp dụng SHA-3 để tạo ra các hàm băm định danh duy nhất (Content Addressable Identifiers) cho từng cột dữ liệu, bảng dữ liệu (Datasets) và cấu trúc Schema. Khi cấu trúc Metadata thay đổi, mã băm sẽ lập tức thay đổi, giúp hệ thống phát hiện Schema Drift tự động trong luồng dẫn dữ liệu (Airflow Pipelines) mà không cần so sánh tuần tự toàn văn.
+                        </li>
+                        <li>
+                            <strong class="text-white">Data Lineage Hashing (Truy vết nguồn gốc dữ liệu):</strong> Khi lưu trữ thông tin về luồng biến đổi dữ liệu từ Source qua Stage tới Warehouse, các mối quan hệ (Edges) được liên kết dưới dạng đồ thị có hướng không chu trình (DAG). Để định danh duy nhất các mối quan hệ xuyên suốt các nền tảng (Spark, ClickHouse, Superset), việc sinh mã định danh hash SHA3-256 cho mối quan hệ `(source_dataset_urn, sink_dataset_urn)` giúp tối ưu hóa đáng kể tốc độ lưu trữ, lập chỉ mục và truy vấn thông tin phả hệ dữ liệu.
+                        </li>
+                        <li>
+                            <strong class="text-white">Data Deduplication & Record-level Lineage (Tối ưu hóa và Chống trùng lặp):</strong> Trong các cơ sở dữ liệu phân tích dạng Columnar-store như ClickHouse, việc lưu trữ khóa định danh dòng tin đóng vai trò then chốt trong việc loại trùng lặp (Dedup). SHA-3 với khả năng song song hóa tốt là ứng viên hoàn hảo để băm gộp các trường cấu thành khóa chính (Composite Primary Key) tại tầng nạp dữ liệu (Ingestion Layer) hiệu năng cao.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Section II -->
+                <div id="academic-threat-model" class="space-y-3">
+                    <h2 class="text-base font-bold text-white border-b border-slate-800 pb-2">II. MÔ HÌNH ĐE DỌA MẬT MÃ HỌC (CRYPTOGRAPHIC THREAT MODEL)</h2>
+                    <p>
+                        Khi phân tích độ an toàn mật mã học từ góc độ nghiên cứu học thuật cấp cao, chúng ta cần so sánh tính kháng cự của cấu trúc Merkle-Damgård và Sponge trước các dạng tấn công điển hình:
+                    </p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                        <div class="bg-slate-950 p-4 border border-slate-800 rounded-lg">
+                            <h4 class="font-bold text-rose-400 mb-1">Mô hình Tấn công Merkle-Damgård (SHA-2)</h4>
+                            <p class="text-[11px] text-slate-400">
+                                Do cấu trúc bám đuôi trực tiếp theo trạng thái băm $H_{i} = f(H_{i-1}, M_i)$, kẻ tấn công có thể giả mạo thông điệp tiếp nối mà không cần phá vỡ thuộc tính kháng tiền ảnh (Pre-image Resistance). Điều này khiến việc thiết kế các cơ chế chữ ký khóa đối xứng cơ bản như MAC cũ bị đe dọa (phải thay thế bằng cấu trúc phức tạp hơn như HMAC để phòng ngừa).
+                            </p>
+                        </div>
+                        <div class="bg-slate-950 p-4 border border-slate-800 rounded-lg">
+                            <h4 class="font-bold text-emerald-400 mb-1">Cơ chế Kháng cự của Sponge (SHA-3)</h4>
+                            <p class="text-[11px] text-slate-400">
+                                Sponge Construction chứng minh được độ an toàn tuyệt đối trước cuộc tấn công mở rộng độ dài dựa trên luận lý toán học: Để khôi phục trạng thái bộ nhớ hoán vị Keccak-f[1600], kẻ tấn công buộc phải truy tìm thông tin từ phân vùng Capacity $c$. Tuy nhiên, phân vùng $c$ không hề rò rỉ ra dòng Bit băm được xuất ra (Squeezed stream). Mức độ bảo mật của SHA-3 tương đương mức giới hạn an toàn danh nghĩa: $2^{c/2}$.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section III -->
+                <div id="academic-cloud-container" class="space-y-3">
+                    <h2 class="text-base font-bold text-white border-b border-slate-800 pb-2">III. ĐÁNH GIÁ HIỆU NĂNG VÀ AN TOÀN TRONG MÔI TRƯỜNG CLOUD & CONTAINER SECURITY</h2>
+                    <p>
+                        Trên không gian vận hành đám mây (Cloud Security, Kubernetes, Docker Security), việc ứng dụng các hàm băm liên kết mật thiết tới quá trình bảo vệ và xác thực tính toàn vẹn của Container Images:
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 pl-2 text-slate-400">
+                        <li>
+                            <strong class="text-white">Xác thực Container Image Digests (Immutable Tags):</strong> Các hệ thống Container Runtime (như containerd, CRI-O) và cơ chế Policy Admission Controller (như Kyverno, OPA) sử dụng Hash Digest của các lớp Layer để đảm bảo rằng Image không bị tiêm nhiễm mã độc (Tampering). Việc nâng cấp từ SHA-256 sang SHA3-256 trong tương lai sẽ ngăn chặn nguy cơ bẻ khóa giả mạo chữ ký số trong kỷ nguyên máy tính lượng tử sắp tới.
+                        </li>
+                        <li>
+                            <strong class="text-white">Đánh giá Hiệu năng phần mềm vs bảo mật (Security vs. Performance Trade-off):</strong> 
+                            Một nghiên cứu benchmark cụ thể trên các Container Sandbox (như gVisor, Kata Containers) chỉ ra rằng việc sử dụng SHA-3 trong phần mềm sinh ra một chi phí overhead nhất định lên CPU so với SHA-2. Điều này là do hầu hết các CPU của Intel, AMD hay ARM đều tích hợp sẵn tập lệnh cứng hỗ trợ tăng tốc SHA-256 (SHA Extension Instructions), trong khi SHA-3 vẫn chưa được hỗ trợ rộng rãi bằng phần cứng ở các CPU thương mại giá rẻ, dẫn tới việc xử lý SHA-3 phần lớn dựa vào phần mềm thuần túy.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Section IV -->
+                <div id="academic-research-topics" class="space-y-3">
+                    <h2 class="text-base font-bold text-white border-b border-slate-800 pb-2">IV. CÁC HƯỚNG ĐỀ TÀI LUẬN VĂN THẠC SĨ KHẢ THI (RESEARCH DIRECTIONS)</h2>
+                    <p>
+                        Dành riêng cho nghiên cứu học thuật của bạn, dưới đây là một số đề xuất hướng nghiên cứu thạc sĩ có tính giao thoa cao giữa an ninh mật mã và kỹ thuật hệ thống dữ liệu đám mây:
+                    </p>
+                    <div class="space-y-4 pt-2">
+                        <div class="border-l-2 border-emerald-500 pl-4">
+                            <h4 class="font-bold text-white">Đề tài 1: Đánh giá thực nghiệm hiệu năng và mức độ tiêu thụ tài nguyên của thuật toán mã hóa SHA-2 và SHA-3 trong môi trường ảo hóa siêu cô lập (gVisor vs. Kata Containers).</h4>
+                            <p class="text-slate-400 mt-1">
+                                <strong class="text-slate-300">Phương pháp luận (Methodology):</strong> Xây dựng kịch bản benchmark đo lường thông lượng (Throughput) băm dữ liệu, độ trễ (Latency), mức độ sử dụng tài nguyên CPU/Memory và Overhead chuyển cảnh (Context Switch Context) khi chạy các luồng sinh băm trong môi trường gVisor (system-call interception) và Kata Containers (microVM). Khảo sát tác động khi nâng kích thước tệp dữ liệu từ kilobyte tới terabyte.
+                            </p>
+                        </div>
+                        <div class="border-l-2 border-emerald-500 pl-4">
+                            <h4 class="font-bold text-white">Đề tài 2: Phát triển mô hình bảo vệ tính riêng tư dữ liệu (Privacy-Preserving) ứng dụng mã băm Sponge Construction trong giải pháp Data Classification tự động trên Kubernetes.</h4>
+                            <p class="text-slate-400 mt-1">
+                                <strong class="text-slate-300">Phương pháp luận (Methodology):</strong> Thiết kế kiến trúc bảo mật Zero Trust cho luồng thu thập dữ liệu lớn sử dụng hàm băm sponge có bổ sung cơ chế muối tự động để định danh nhanh dữ liệu nhạy cảm (PII - Personally Identifiable Information) mà không làm lộ dữ liệu gốc trước khi gửi về trung tâm Data Catalog quốc gia, tuân thủ nghiêm ngặt GDPR/DAMA Principles.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Status Bar -->
+    <footer class="border-t border-slate-800 bg-slate-900/40 text-slate-500 text-xs py-4 px-6 mt-auto">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <div>
+                © 2026 Mật mã học Chuyên sâu - Giáo trình thực nghiệm nâng cao
+            </div>
+            <div class="flex items-center gap-4">
+                <span>Standard: <strong class="text-slate-400">Keccak-f[1600] / SHA-3-256</strong></span>
+                <span>Chế độ: <strong class="text-emerald-400">Mô phỏng Toàn vẹn (Deterministic simulation)</strong></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic & Cryptographic Engine -->
+    <script>
+        // --- KECCAK CRYPTOGRAPHIC ENGINE IMPLEMENTATION ---
+        // We implement a complete, conformant FIPS 202 Keccak-f[1600] engine using BigInt for exact visualization.
+        
+        const RC = [
+            0x0000000000000001n, 0x0000000000008082n, 0x800000000000808an, 0x8000000080008000n,
+            0x000000000000808bn, 0x0000000080000001n, 0x8000000080008081n, 0x8000000000008009n,
+            0x000000000000008an, 0x0000000000000088n, 0x0000000080008009n, 0x000000008000000an,
+            0x000000008000808bn, 0x800000000000008bn, 0x8000000000008089n, 0x8000000000008003n,
+            0x8000000000008002n, 0x8000000000000080n, 0x000000000000800an, 0x800000008000000an,
+            0x8000000080008081n, 0x8000000000008080n, 0x0000000080000001n, 0x8000000080008008n
+        ];
+
+        const r_offsets = [
+            0n,  1n, 62n, 28n, 27n,
+           36n, 44n,  6n, 55n, 20n,
+            3n, 10n, 43n, 25n, 39n,
+           41n, 45n, 15n, 21n,  8n,
+           18n,  2n, 61n, 56n, 14n
+        ];
+
+        function rotl(val, shift) {
+            shift = shift % 64n;
+            if (shift === 0n) return val;
+            return ((val << shift) & 0xffffffffffffffffn) | (val >> (64n - shift));
+        }
+
+        function stringToBytes(str) {
+            return new TextEncoder().encode(str);
+        }
+
+        // Compliant SHA-3-256 padding according to FIPS 202
+        function padSHA3_256(bytes) {
+            const r = 136; // Rate for SHA3-256 is 136 bytes (1088 bits)
+            const len = bytes.length;
+            let padLen = r - (len % r);
+            const totalLen = len + padLen;
+            const padded = new Uint8Array(totalLen);
+            padded.set(bytes);
+            
+            if (padLen === 1) {
+                padded[len] = 0x86; // 0x06 (domain separating bits for SHA-3) | 0x80 (end bit)
+            } else {
+                padded[len] = 0x06;
+                padded[totalLen - 1] = 0x80;
+            }
+            return padded;
+        }
+
+        function bytesToWord(bytes, offset) {
+            let val = 0n;
+            for (let i = 0; i < 8; i++) {
+                if (offset + i < bytes.length) {
+                    val |= BigInt(bytes[offset + i]) << (8n * BigInt(i));
+                }
+            }
+            return val;
+        }
+
+        function wordToBytes(word, bytes, offset) {
+            for (let i = 0; i < 8; i++) {
+                if (offset + i < bytes.length) {
+                    bytes[offset + i] = Number((word >> (8n * BigInt(i))) & 0xffn);
+                }
+            }
+        }
+
+        // Trace of the computation for interactive exploration
+        let currentTrace = null;
+        let currentBlockIndex = 0;
+        let currentRoundIndex = 0;
+        let currentMicroStep = 'theta'; // theta, rho, pi, chi, iota
+        let selectedLaneIdx = 0;
+
+        function computeHashTrace(inputText) {
+            const bytes = stringToBytes(inputText);
+            const padded = padSHA3_256(bytes);
+            const r_bytes = 136;
+            const numBlocks = padded.length / r_bytes;
+            
+            let state = new BigUint64Array(25);
+            let blocksTrace = [];
+            
+            for (let b = 0; b < numBlocks; b++) {
+                let blockBytes = padded.slice(b * r_bytes, (b + 1) * r_bytes);
+                let stateBeforeXor = new BigUint64Array(state);
+                
+                // Absorbing phase: XOR first 17 lanes (bitrate)
+                for (let i = 0; i < 17; i++) {
+                    state[i] ^= bytesToWord(blockBytes, i * 8);
+                }
+                let stateAfterXor = new BigUint64Array(state);
+                
+                let roundsTrace = [];
+                for (let round = 0; round < 24; round++) {
+                    let sStart = new BigUint64Array(state);
+                    
+                    // --- THETA (θ) ---
+                    let C = new BigUint64Array(5);
+                    let D = new BigUint64Array(5);
+                    for (let x = 0; x < 5; x++) {
+                        C[x] = state[x] ^ state[x+5] ^ state[x+10] ^ state[x+15] ^ state[x+20];
+                    }
+                    for (let x = 0; x < 5; x++) {
+                        D[x] = C[(x+4)%5] ^ rotl(C[(x+1)%5], 1n);
+                    }
+                    let sTheta = new BigUint64Array(state);
+                    for (let x = 0; x < 5; x++) {
+                        for (let y = 0; y < 5; y++) {
+                            sTheta[x + 5*y] ^= D[x];
+                        }
+                    }
+                    
+                    // --- RHO (ρ) & PI (π) ---
+                    // rho rotates the lanes, pi shuffles them.
+                    let sRhoPi = new BigUint64Array(25);
+                    for (let x = 0; x < 5; x++) {
+                        for (let y = 0; y < 5; y++) {
+                            let idx = x + 5*y;
+                            let nx = y;
+                            let ny = (2*x + 3*y) % 5;
+                            sRhoPi[nx + 5*ny] = rotl(sTheta[idx], r_offsets[idx]);
+                        }
+                    }
+                    
+                    // --- CHI (χ) ---
+                    // non-linear step mapping.
+                    let sChi = new BigUint64Array(25);
+                    for (let y = 0; y < 5; y++) {
+                        for (let x = 0; x < 5; x++) {
+                            let idx = x + 5*y;
+                            let idx1 = ((x+1)%5) + 5*y;
+                            let idx2 = ((x+2)%5) + 5*y;
+                            sChi[idx] = sRhoPi[idx] ^ ((~sRhoPi[idx1]) & sRhoPi[idx2]);
+                        }
+                    }
+                    
+                    // --- IOTA (ι) ---
+                    // Add round constant to state[0]
+                    let sIota = new BigUint64Array(sChi);
+                    sIota[0] ^= RC[round];
+                    
+                    // Commit to state for next round
+                    state = sIota;
+                    
+                    roundsTrace.push({
+                        roundIndex: round,
+                        start: Array.from(sStart).map(x => x.toString()),
+                        afterTheta: Array.from(sTheta).map(x => x.toString()),
+                        afterRhoPi: Array.from(sRhoPi).map(x => x.toString()),
+                        afterChi: Array.from(sChi).map(x => x.toString()),
+                        afterIota: Array.from(sIota).map(x => x.toString())
+                    });
+                }
+                
+                blocksTrace.push({
+                    blockIndex: b,
+                    blockBytes: Array.from(blockBytes),
+                    stateBeforeXor: Array.from(stateBeforeXor).map(x => x.toString()),
+                    stateAfterXor: Array.from(stateAfterXor).map(x => x.toString()),
+                    rounds: roundsTrace
+                });
+            }
+            
+            // Squeeze out first 32 bytes (256 bits)
+            let hashBytes = new Uint8Array(32);
+            for (let i = 0; i < 4; i++) {
+                wordToBytes(state[i], hashBytes, i * 8);
+            }
+            let outputHex = Array.from(hashBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            
+            return {
+                input: inputText,
+                paddedBytes: Array.from(padded),
+                blocks: blocksTrace,
+                outputHex: outputHex,
+                finalState: Array.from(state).map(x => x.toString())
+            };
+        }
+
+        // --- INTERACTIVE SYSTEM & UI LOGIC ---
+
+        function runHashingSimulation() {
+            const inputVal = document.getElementById('input-text').value;
+            currentTrace = computeHashTrace(inputVal);
+            
+            // Update metadata displays
+            document.getElementById('input-bytes-len').textContent = stringToBytes(inputVal).length;
+            document.getElementById('input-blocks-count').textContent = currentTrace.blocks.length;
+            document.getElementById('total-blocks-display').textContent = currentTrace.blocks.length;
+            
+            // Reset to step 0
+            currentBlockIndex = 0;
+            currentRoundIndex = 0;
+            currentMicroStep = 'theta';
+            
+            updateVisualizerState();
+        }
+
+        function switchTab(tabId) {
+            // Manage tabs visibility
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+            // Manage button active states
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200";
+            });
+            
+            const activeBtn = document.getElementById('btn-' + tabId);
+            if (activeBtn) {
+                if (tabId === 'simulator' || tabId === 'matrix') {
+                    activeBtn.className = "tab-btn px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-emerald-500 text-slate-950 shadow font-semibold";
+                } else {
+                    activeBtn.className = "tab-btn px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-indigo-500 text-white shadow font-semibold";
+                }
+            }
+        }
+
+        function stepNext() {
+            if (!currentTrace) return;
+            if (currentRoundIndex < 23) {
+                currentRoundIndex++;
+            } else if (currentBlockIndex < currentTrace.blocks.length - 1) {
+                currentBlockIndex++;
+                currentRoundIndex = 0;
+            }
+            updateVisualizerState();
+        }
+
+        function stepPrev() {
+            if (!currentTrace) return;
+            if (currentRoundIndex > 0) {
+                currentRoundIndex--;
+            } else if (currentBlockIndex > 0) {
+                currentBlockIndex--;
+                currentRoundIndex = 23;
+            }
+            updateVisualizerState();
+        }
+
+        function jumpToStep(step) {
+            // High-level jumping
+            if (step === 'padding') {
+                currentRoundIndex = 0;
+                currentMicroStep = 'theta';
+                updateStatusText("Đang xem: Padding & Phân tách khối tin");
+            } else if (step === 'absorbing') {
+                currentRoundIndex = 0;
+                currentMicroStep = 'theta';
+                updateStatusText("Đang xem: Absorbing (Trộn dữ liệu vào Bitrate)");
+            } else if (step === 'permutation') {
+                currentMicroStep = 'theta';
+                updateStatusText("Đang xem: Các vòng hoán vị Keccak-f");
+            } else if (step === 'squeezing') {
+                currentRoundIndex = 23;
+                currentMicroStep = 'iota';
+                updateStatusText("Đang xem: Squeezing (Kết xuất mã băm)");
+            }
+            updateVisualizerState();
+        }
+
+        function setMicroStep(step, event) {
+            if (event) event.stopPropagation();
+            currentMicroStep = step;
+            
+            // Toggle sub-button styling
+            ['theta', 'rho', 'pi', 'chi', 'iota'].forEach(s => {
+                const btn = document.getElementById('mstep-' + s);
+                if (s === step) {
+                    btn.className = "py-1 bg-indigo-500 border border-indigo-400 rounded text-slate-950 font-bold hover:bg-indigo-400 transition-all";
+                } else {
+                    btn.className = "py-1 bg-slate-950 border border-slate-800 rounded text-slate-400 hover:bg-slate-900 transition-all";
+                }
+            });
+
+            updateVisualizerState();
+        }
+
+        function updateStatusText(text) {
+            document.getElementById('sim-status').textContent = text;
+        }
+
+        function updateVisualizerState() {
+            if (!currentTrace) return;
+
+            // Update header displays
+            document.getElementById('current-block-display').textContent = currentBlockIndex + 1;
+            document.getElementById('current-round-display').textContent = currentRoundIndex;
+
+            const block = currentTrace.blocks[currentBlockIndex];
+            const round = block.rounds[currentRoundIndex];
+
+            // Select array representing current state in visualization
+            let stateArrayStr = round.start; // Default starting round
+            if (currentMicroStep === 'theta') {
+                stateArrayStr = round.afterTheta;
+            } else if (currentMicroStep === 'rho') {
+                stateArrayStr = round.afterRhoPi; // Rho and Pi computed together
+            } else if (currentMicroStep === 'pi') {
+                stateArrayStr = round.afterRhoPi; 
+            } else if (currentMicroStep === 'chi') {
+                stateArrayStr = round.afterChi;
+            } else if (currentMicroStep === 'iota') {
+                stateArrayStr = round.afterIota;
+            }
+
+            // Render the 5x5 Grid
+            const container = document.getElementById('state-grid-container');
+            container.innerHTML = '';
+
+            for (let y = 0; y < 5; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const idx = x + 5 * y;
+                    const valBigInt = BigInt(stateArrayStr[idx]);
+                    const hexVal = "0x" + valBigInt.toString(16).padStart(16, '0');
+                    const isBitrate = idx < 17;
+
+                    const gridCard = document.createElement('div');
+                    gridCard.onclick = () => selectLane(idx, x, y, valBigInt);
+                    
+                    // Set color schemes
+                    let borderClass = isBitrate ? 'border-cyan-800/60' : 'border-fuchsia-800/60';
+                    let bgClass = isBitrate ? 'bg-cyan-950/20 hover:bg-cyan-950/40' : 'bg-fuchsia-950/20 hover:bg-fuchsia-950/40';
+                    let textClass = isBitrate ? 'text-cyan-400' : 'text-fuchsia-400';
+                    
+                    if (idx === selectedLaneIdx) {
+                        borderClass = 'border-emerald-500 ring-2 ring-emerald-500/30';
+                        bgClass = 'bg-slate-900';
+                    }
+
+                    gridCard.className = `${bgClass} border ${borderClass} rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-all duration-150 transform hover:scale-[1.03] select-none`;
+                    gridCard.innerHTML = `
+                        <div class="flex justify-between items-center text-[10px] text-slate-500">
+                            <span>A[${x},${y}]</span>
+                            <span class="font-mono text-[9px]">${isBitrate ? 'Bitrate' : 'Capacity'}</span>
+                        </div>
+                        <div class="code-font text-xs font-bold text-slate-200 my-1.5 truncate" title="${hexVal}">
+                            ${hexVal.slice(2, 6)}...${hexVal.slice(-4)}
+                        </div>
+                        <div class="text-[9px] ${textClass} font-semibold">
+                            Lò #idx: ${idx}
+                        </div>
+                    `;
+                    container.appendChild(gridCard);
+                }
+            }
+
+            // Update details of selected lane
+            const currentSelectedBigInt = BigInt(stateArrayStr[selectedLaneIdx]);
+            selectLane(selectedLaneIdx, selectedLaneIdx % 5, Math.floor(selectedLaneIdx / 5), currentSelectedBigInt);
+
+            // Update mathematical descriptions and helper text dynamically
+            updateExplanationBoard();
+        }
+
+        function selectLane(idx, x, y, valBigInt) {
+            selectedLaneIdx = idx;
+            
+            // Highlight selected in HTML
+            document.getElementById('selected-lane-coord').textContent = `Lane A[${x},${y}] (Chỉ số: ${idx})`;
+            const hexStr = "0x" + valBigInt.toString(16).padStart(16, '0');
+            document.getElementById('selected-lane-hex').textContent = hexStr;
+            
+            const isBitrate = idx < 17;
+            const segmentSpan = document.getElementById('selected-lane-segment');
+            segmentSpan.textContent = isBitrate ? "Bitrate r (Khối trộn dữ liệu)" : "Capacity c (Khối bảo mật tuyệt mật)";
+            segmentSpan.className = isBitrate ? "font-semibold text-cyan-400" : "font-semibold text-fuchsia-400";
+
+            // Render binary breakdown
+            const binStr = valBigInt.toString(2).padStart(64, '0');
+            const binContainer = document.getElementById('selected-lane-binary');
+            binContainer.innerHTML = '';
+            
+            // Split 64 bits into 8 blocks
+            for (let i = 0; i < 8; i++) {
+                const byteSegment = binStr.slice(i * 8, (i + 1) * 8);
+                const blockDiv = document.createElement('div');
+                blockDiv.className = "bg-slate-950 px-1 py-1 rounded text-slate-300 border border-slate-800/40 text-[10px]";
+                blockDiv.textContent = byteSegment;
+                binContainer.appendChild(blockDiv);
+            }
+
+            // Dynamic border update on container grid items without re-rendering everything
+            const items = document.getElementById('state-grid-container').children;
+            if (items.length === 25) {
+                for (let i = 0; i < 25; i++) {
+                    const isB = i < 17;
+                    if (i === idx) {
+                        items[i].className = `${isB ? 'bg-cyan-950/30' : 'bg-fuchsia-950/30'} border border-emerald-500 ring-2 ring-emerald-500/30 rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-all transform scale-[1.03] select-none`;
+                    } else {
+                        const borderC = isB ? 'border-cyan-800/40' : 'border-fuchsia-800/40';
+                        const bgC = isB ? 'bg-cyan-950/10 hover:bg-cyan-950/30' : 'bg-fuchsia-950/10 hover:bg-fuchsia-950/30';
+                        items[i].className = `${bgC} border ${borderC} rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-all duration-150 transform hover:scale-[1.01] select-none`;
+                    }
+                }
+            }
+        }
+
+        function updateExplanationBoard() {
+            const title = document.getElementById('explain-title');
+            const content = document.getElementById('explain-content');
+
+            const msteps_desc = {
+                theta: {
+                    title: "Phép toán vi mô: Theta (θ) - Khuếch tán tuyến tính (Linear Diffusion)",
+                    text: `
+                        <p class="mb-2"><strong>Ý nghĩa:</strong> Thực hiện khuếch tán diện rộng, bảo toàn tính chất tương quan cột. Mỗi bit trong trạng thái sẽ được XOR với giá trị parity (tính chẵn lẻ) của hai cột lân cận.</p>
+                        <p class="mb-2 font-mono text-[11px] bg-slate-950 p-2 rounded text-slate-400">Công thức: A[x,y,z] = A[x,y,z] ⊕ Parity(Column x-1) ⊕ Parity(Column x+1 rotated by 1)</p>
+                        <p><strong>Tính chất:</strong> Do phép Parity cột tuyến tính, bất kỳ sự thay đổi của một bit đầu vào nào sẽ nhanh chóng loang rộng ra toàn bộ các cột lân cận chỉ sau duy nhất 1 vòng băm.</p>
+                    `
+                },
+                rho: {
+                    title: "Phép toán vi mô: Rho (ρ) - Dịch chuyển bit trục Z (Lane Rotation)",
+                    text: `
+                        <p class="mb-2"><strong>Ý nghĩa:</strong> Dịch chuyển các bit dọc theo trục sâu (z-axis) của từng Lane riêng lẻ. Mỗi Lane trong số 25 Lanes sẽ được dịch chuyển xoay tròn một lượng bit cố định.</p>
+                        <p class="mb-2 font-mono text-[11px] bg-slate-950 p-2 rounded text-slate-400">Công thức: A[x,y] = rotl(A[x,y], Offset[x,y])</p>
+                        <p><strong>Tính chất:</strong> Ngăn chặn việc các lớp cắt (slices) kế thừa các thông tin dịch tuần tự giống hệt nhau, phá vỡ tính tương đồng vị trí của dữ liệu trong không gian 3 chiều.</p>
+                    `
+                },
+                pi: {
+                    title: "Phép toán vi mô: Pi (π) - Đảo hoán tọa độ Lane (Lane Permutation)",
+                    text: `
+                        <p class="mb-2"><strong>Ý nghĩa:</strong> Xáo trộn vị trí của toàn bộ các Lane trong ma trận $5 \times 5$. Các Lane được hoán chuyển vị trí địa lý theo một công thức toán học ma trận xác định.</p>
+                        <p class="mb-2 font-mono text-[11px] bg-slate-950 p-2 rounded text-slate-400">Công thức chuyển vị: A[y, (2x + 3y) mod 5] = A[x,y]</p>
+                        <p><strong>Tính chất:</strong> Phép dịch chuyển này đảm bảo rằng các cấu trúc Row (hàng) và Column (cột) liên tục được hoán đổi cho nhau, tạo độ xáo trộn hỗn loạn tối đa sau mỗi vòng lặp.</p>
+                    `
+                },
+                chi: {
+                    title: "Phép toán vi mô: Chi (χ) - Phi tuyến tính hóa (Non-linear Mapping)",
+                    text: `
+                        <p class="mb-2"><strong>Ý nghĩa:</strong> Đây là bước toán học phi tuyến tính cực kỳ quan trọng trong SHA-3 (Đóng vai trò thay thế cho các bảng S-Box trong thiết kế mật mã truyền thống). Nó XOR từng bit với tổ hợp phi tuyến tính của các phần tử liền kề trên cùng một hàng.</p>
+                        <p class="mb-2 font-mono text-[11px] bg-slate-950 p-2 rounded text-slate-400">Công thức: A[x,y] = A[x,y] ⊕ ( (~A[x+1, y]) & A[x+2, y] )</p>
+                        <p><strong>Tính chất:</strong> Giúp hệ thống chống lại các phương pháp phân tích mật mã đại số (algebraic cryptanalysis) và phân tích mật mã tuyến tính.</p>
+                    `
+                },
+                iota: {
+                    title: "Phép toán vi mô: Iota (ι) - Phá vỡ tính đối xứng (Symmetry Breaking)",
+                    text: `
+                        <p class="mb-2"><strong>Ý nghĩa:</strong> XOR Lane đầu tiên tại tọa độ A[0,0] với một hằng số vòng (Round Constant) thay đổi theo số thứ tự của vòng băm (0 đến 23).</p>
+                        <p class="mb-2 font-mono text-[11px] bg-slate-950 p-2 rounded text-slate-400">Công thức: A[0,0] = A[0,0] ⊕ RoundConstant[round_index]</p>
+                        <p><strong>Tính chất:</strong> Nếu không có Iota, các vòng hoán vị của Keccak sẽ giống nhau hoàn toàn, dễ dẫn đến các điểm bất động hoặc các chu kỳ lặp đối xứng có thể bị lợi dụng để giảm không gian tìm kiếm khóa.</p>
+                    `
+                }
+            };
+
+            const data = msteps_desc[currentMicroStep];
+            if (data) {
+                title.textContent = data.title;
+                content.innerHTML = data.text;
+            }
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- INITIALIZATION ON LOAD ---
+        window.onload = function() {
+            // Compute initial state with default input "hello"
+            runHashingSimulation();
+            
+            // Pre-select lane (0,0)
+            selectLane(0, 0, 0, BigInt(currentTrace.blocks[0].rounds[0].start[0]));
+        }
+    </script>
+</body>
+</html>

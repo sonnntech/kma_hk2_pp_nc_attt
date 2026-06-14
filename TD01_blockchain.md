@@ -14,7 +14,7 @@ Trong hệ thống đường ống dữ liệu (Data Pipeline), dữ liệu sau 
 ```mermaid
 flowchart LR
     A[Data Warehouse vật lý] -.->|Trực quan hóa| B(Kiểm toán viên độc lập)
-    C[(Sổ cái Blockchain bất biến)] -->|Đối sánh| B
+    C[(Sổ cái Blockchain bất biến)] -->|Đối soát| B
     B -->|Đánh giá| D{Toàn vẹn?}
 ```
 
